@@ -15,8 +15,8 @@ def check_inputs(env, board, current_player, selected_piece):
                 moves_for_piece = env.valid_moves_for_piece(current_player, selected_piece)
 
                 for move in moves_for_piece:
-                    if move[0] == row and move[1] == col:
-                        env.move_piece(current_player, selected_piece, (row, col))
+                    if move[2] == row and move[3] == col:
+                        env.move_piece(current_player, move)
                         selected_piece = None
                         current_player = -1 * current_player
                         return current_player, selected_piece

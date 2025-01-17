@@ -49,7 +49,7 @@ def draw_board(env, win, board, player, selected_piece=None):
     if selected_piece is not None:
         moves_for_piece = env.valid_moves_for_piece(player, selected_piece)
         for move in moves_for_piece:
-            win.blit(MOVE_MARK, (move[1] * SQUARE_SIZE, move[0] * SQUARE_SIZE))
+            win.blit(MOVE_MARK, (move[3] * SQUARE_SIZE, move[2] * SQUARE_SIZE))
 
 def update_board(env, win, board, player, selected_piece=None):
     win.fill((0, 0, 0))  # Clear the screen
