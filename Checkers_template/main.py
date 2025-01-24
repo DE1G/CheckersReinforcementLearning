@@ -75,7 +75,6 @@ def main():
             MENU.mainloop(WIN)
         elif window_state == WindowState.TRAINING:
             while run:
-                #train(env, 1000, Q_agent)
                 train_agent_vs_random(env,1000, Q_agent)
                 window_state = WindowState.MENU
                 MENU.enable()
@@ -86,6 +85,7 @@ def main():
             for game in range(100):
                 env.reset()
                 current_player = -1
+                moves_played = 0
                 while run:
                     update_board(env, WIN, env.get_board(), current_player)
                     if current_player == -1:
@@ -96,18 +96,22 @@ def main():
                         Q_agent.select_action(current_player)
                         env.move_piece(current_player, Q_agent.select_action(current_player))
                     current_player = -current_player
+                    moves_played += 1
                     winner = env.game_winner()
 
+                    if moves_played >= 400:
+                        print("to many moves")
+                        break
                     if winner is not None:
                         if winner == -1:
                             a_wins += 1
                         elif winner == 1:
                             r_wins += 1
                         print("Player", winner, "wins!")
-                        window_state = WindowState.MENU
                         break
             print("agent:", a_wins)
             print("r:", r_wins)
+            window_state = WindowState.MENU
             MENU.enable()
         elif window_state == WindowState.SELF:
             env.reset()

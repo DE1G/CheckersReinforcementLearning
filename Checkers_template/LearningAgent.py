@@ -85,7 +85,7 @@ class LearningAgent:
         max_q_value = float('-inf')
 
         for action in valid_actions:
-            q_value = self.q_table.get((state, (action[0], action[1], action[2], action[3])), 0)
+            q_value = self.q_table.get((state, action), 0)
             if q_value > max_q_value:
                 max_q_value = q_value
                 best_action = action

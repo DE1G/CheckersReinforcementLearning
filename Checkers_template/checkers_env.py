@@ -32,7 +32,7 @@ class checkers_env:
     def get_board(self):
         return self.board
 
-    def valid_moves(self, player, include_captured_pieces=False):
+    def valid_moves(self, player):
         """
         Finds all valid moves for the given player, including multi-captures.
         Returns a list of moves. Each move is a tuple:
@@ -45,10 +45,11 @@ class checkers_env:
                     piece_directions = self.get_piece_directions(player, self.board[row, col])
                     self.find_moves(row, col, player, piece_directions, moves, [], multi_capture=True)
 
-        if not include_captured_pieces:
-            for i in range(len(moves)):
-                moves[i] = (moves[i][0], moves[i][1],moves[i][2], moves[i][3])
-        return moves
+        #check if capture moves exist and convert list to tuple to be able to hash it
+        capture_moves = [(move[0], move[1], move[2], move[3], tuple(move[4])) for move in moves if len(move[4])>0]
+        moves = [(move[0], move[1], move[2], move[3], tuple(move[4])) for move in moves]
+
+        return moves if len(capture_moves) == 0 else capture_moves
 
     def get_piece_directions(self, player, piece):
         """Returns movement directions based on piece type (normal or king)."""
@@ -72,7 +73,7 @@ class checkers_env:
             capture_r, capture_c = row + 2 * dr, col + 2 * dc
             if (
                     0 <= capture_r < 6 and 0 <= capture_c < 6
-                    and self.board[nr, nc] in [-player, -2 * player]  # Opponent's piece
+                    and (self.board[nr, nc] == -player or -2 * player == self.board[nr,nc])  # Opponent's piece
                     and self.board[capture_r, capture_c] == 0  # Landing square is empty
                     and (nr, nc) not in captured  # Avoid re-capturing the same piece
             ):
@@ -90,19 +91,18 @@ class checkers_env:
         piece = self.board[row, col]
         if piece not in [player, 2 * player]:
             return []
-        directions = self.get_piece_directions(player, piece)
-        moves = []
-        self.find_moves(row, col, player, directions, moves, [], multi_capture=True)
-        return moves
+
+        moves = self.valid_moves(player)
+        valid_moves = []
+        for move in moves:
+            if move[0] == row and move[1] == col:
+                valid_moves.append(move)
+        return valid_moves
 
     def move_piece(self, player, action):
         """
         Updates the board by performing the given action and handles captures.
         """
-        moves = self.valid_moves(player, True)
-        for i in range(len(moves)):
-            if (moves[i][0], moves[i][1],moves[i][2], moves[i][3]) == action:
-                action = moves[i]
         start_r, start_c, end_r, end_c, captured_positions = action
 
         # Move the piece

@@ -59,7 +59,6 @@ def train_agent_vs_random(env, episodes, agent):
             next_state = None
             state = (tuple(env.get_board().flatten()), side)
             board = env.get_board()
-
             while True:
                 # Select and perform an action
                 action = agent.select_action(side)
@@ -70,7 +69,6 @@ def train_agent_vs_random(env, episodes, agent):
                 if winner is None:
                     next_state = get_next_state(env, side)
                     winner = env.game_winner()
-
 
                 reward = agent.evaluate_board(board, env.get_board(), side, winner)
 
