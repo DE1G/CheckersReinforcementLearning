@@ -1,16 +1,12 @@
-import checkers_env
-import math
+
 import random
-import matplotlib
-import matplotlib.pyplot as plt
-from collections import namedtuple, deque
-from itertools import count
 import numpy as np
-import pandas as pd
+import csv
+import os.path
 
 class LearningAgent:
 
-    def __init__(self, learning_rate, epsilon, discount_factor, env):
+    def __init__(self, learning_rate, epsilon, discount_factor, env, agent_name):
         """
         Initialize the LearningAgent.
 
@@ -24,51 +20,67 @@ class LearningAgent:
         self.discount_factor = discount_factor
         self.env = env
         self.q_table = {}  # Dictionary for Q-values
+        self.agent_name = agent_name
+        if os.path.exists(agent_name + ".csv"):
+            print(agent_name + " loading Q-table ...")
+            with open(agent_name + ".csv", mode='r', newline='') as file:
+                reader = csv.reader(file)
+                for row in reader:
+                    key_tuple = eval(row[0])
+                    value = float(row[1])
+                    self.q_table[key_tuple] = value
+            print(agent_name + " Q-table loaded")
 
-    def evaluation(self, board_before, board, player):
-        """
-        Evaluate the board and return an intermediate reward.
 
-        :param board: The current board state
-        :param player: The current player
-        :return: Reward for the board state
-        """
+    def evaluate_board(self, board, next_board, side, winner = None):
+
         reward = 0
 
         # Assign rewards for piece differences
-        pieces_player1 = np.count_nonzero((board == 1) | (board == 2))
-        pieces_player2 = np.count_nonzero((board == -1) | (board == -2))
-        before_pieces_player1 = np.count_nonzero((board_before == 1) | (board_before == 2))
-        before_pieces_player2 = np.count_nonzero((board_before == -1) | (board_before == -2))
-        reward += (pieces_player1 - pieces_player2)
-        reward += ((pieces_player1 - pieces_player2) - (before_pieces_player1 - before_pieces_player2)) * 3
+        pieces_player = np.count_nonzero((next_board == side) | (next_board == 2 * side))
+        pieces_enemy = np.count_nonzero((next_board == -side) | (next_board == -2 * side))
+        before_pieces_player = np.count_nonzero((board == side) | (board == 2 * side))
+        before_pieces_enemy = np.count_nonzero((board == -side) | (board == -2 * side))
+
+        reward += (pieces_player - pieces_enemy) * 2
+        reward -= (before_pieces_player - pieces_player) * 5
+        reward += (before_pieces_enemy - pieces_enemy) * 5
 
         # Additional rewards for kings
-        before_kings_player1 = np.count_nonzero(board_before == 2)
-        before_kings_player2 = np.count_nonzero(board_before == -2)
-        kings_player1 = np.count_nonzero(board == 2)
-        kings_player2 = np.count_nonzero(board == -2)
-        reward += (kings_player1 - kings_player2) * 2 * player
-        reward += ((kings_player1- kings_player2) - (before_kings_player1 - before_kings_player2)) * 2
+        before_kings_player = np.count_nonzero(board == 2 * side)
+        before_kings_enemy = np.count_nonzero(board == -2 * side)
+        kings_player = np.count_nonzero(next_board == 2 * side)
+        kings_enemy = np.count_nonzero(next_board == -2 * side)
 
+        reward += kings_player
+        reward -= (before_kings_player - kings_player) * 3
+        reward += (before_kings_enemy - kings_enemy) * 3
+
+        if winner == side:
+            reward += 5
+        elif winner == -side:
+            reward -= 5
+        elif winner == 0:
+            reward -= 2
 
         return reward
 
-    def select_action(self, player):
+    def select_action(self, side):
         """
         Choose an action using an epsilon-greedy policy.
 
-        :param player: The current player
+        :param side: The current side the agent plays on
         :return: Selected action
         """
-        state = tuple(self.env.get_board().flatten())
-        valid_actions = self.env.valid_moves(player)
 
+        valid_actions = self.env.valid_moves(side)
         if random.random() < self.epsilon:
             # Exploration: Random action
             return random.choice(valid_actions)
 
         # Exploitation: Best action based on Q-values
+        board = tuple(self.env.get_board().flatten())
+        state = (board, side)
         best_action = None
         max_q_value = float('-inf')
 
@@ -80,75 +92,25 @@ class LearningAgent:
 
         return best_action if best_action else random.choice(valid_actions)
 
-    def learning(self, episodes):
-        print("Hello")
-        """
-        Train the agent using Q-learning.
 
-        :param episodes: Number of games to play for training
-        """
-        rl_agent_win_series = [0]
+    def update_QTable(self, state_action, next_state, side, reward):
 
-        for episode in range(episodes):
-            self.env.reset()
-            state = tuple(self.env.get_board().flatten())
-            player = 1  # Start with Player 1
+        valid_actions = self.env.valid_moves(side)
 
-            while True:
-                # Select and perform an action
-                action = self.select_action(player)
-                self.env.move_piece(player, action)
+        # Q-learning update
+        next_q = max(
+        [self.q_table.get((next_state, (a[0], a[1], a[2], a[3])), 0) for a in valid_actions],
+        default=0
+        )
 
-                winner = self.env.game_winner(self.env.get_board())
+        current_q = self.q_table.get(state_action, 0)
+        self.q_table[
+        state_action] = current_q + self.step_size * (
+            reward + self.discount_factor * next_q - current_q
+        )
 
-                if winner is None:
-                    #Make other player makes random move
-                    random_valid_actions = self.env.valid_moves(-1)
-                    random_action = random.choice(random_valid_actions)
-                    self.env.move_piece(-1, random_action)
-
-                # Get the next state and reward
-                next_state = tuple(self.env.get_board().flatten())
-                reward = self.evaluation(state, self.env.get_board(), player)
-
-                # Check if the game is over
-                winner = self.env.game_winner(self.env.get_board())
-                if winner is not None:
-                    if winner == player:
-                        reward += 15  # Reward for winning
-                    elif winner == -player:
-                        reward -= 15  # Penalty for losing
-                    else:
-                        reward += 0  # Neutral reward for draw
-
-                valid_actions = self.env.valid_moves(player)
-
-                # Q-learning update
-                best_next_q = max(
-                    [self.q_table.get((next_state, (a[0], a[1], a[2], a[3])), 0) for a in valid_actions],
-                    default=0
-                )
-
-                current_q = self.q_table.get((state, (action[0], action[1], action[2], action[3])), 0)
-                self.q_table[(state, (action[0], action[1], action[2], action[3]))] = current_q + self.step_size * (
-                    reward + self.discount_factor * best_next_q - current_q
-                )
-
-                # Break if the game is over
-                if winner is not None:
-                    break
-
-                # Move to the next state and switch players
-                state = next_state
-            if winner == 1:
-                rl_agent_win_series.append(rl_agent_win_series[len(rl_agent_win_series) - 1] + 1)
-            else:
-                rl_agent_win_series.append(rl_agent_win_series[len(rl_agent_win_series) - 1])
-            # Decay epsilon after each episode
-            self.epsilon = max(0.01, self.epsilon * 0.995)
-
-        for game in range(len(rl_agent_win_series)):
-            rl_agent_win_series[game] = rl_agent_win_series[game] / (game + 1)
-        pd.Series(rl_agent_win_series).plot()
-        plt.ylim(0.4, 1)
-        plt.show()
+    def save_QTable(self):
+        with open(self.agent_name + ".csv", "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerows(self.q_table.items())
+        print(self.agent_name + " Q-table saved")

@@ -7,6 +7,8 @@ SQUARE_SIZE = WIDTH // COLS
 
 def check_inputs(env, board, current_player, selected_piece):
     for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
         if event.type == pygame.MOUSEBUTTONDOWN:
             row, col = get_square_from_pos(pygame.mouse.get_pos())
 
@@ -31,3 +33,10 @@ def get_square_from_pos(pos):
     """Convert mouse position to board coordinates."""
     x, y = pos
     return y // SQUARE_SIZE, x // SQUARE_SIZE
+
+def check_esc():
+    pressed = pygame.key.get_pressed()
+    if pressed[pygame.K_ESCAPE]:
+        print("esc")
+        return True
+    return False

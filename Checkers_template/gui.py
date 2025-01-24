@@ -1,6 +1,5 @@
 import pygame
 import sys
-from Checkers_template.checkers_env import checkers_env
 
 # Constants
 WIDTH, HEIGHT = 600, 600  # Window dimensions
@@ -25,6 +24,17 @@ RED_KING_PIECE_SURFACE = pygame.transform.scale(RED_KING_PIECE_SURFACE, (SQUARE_
 WHITE_KING_PIECE_SURFACE = pygame.transform.scale(WHITE_KING_PIECE_SURFACE, (SQUARE_SIZE, SQUARE_SIZE))
 MOVE_MARK = pygame.transform.scale(MOVE_MARK, (SQUARE_SIZE, SQUARE_SIZE))
 BOARD = pygame.transform.scale(BOARD, (WIDTH, HEIGHT))
+
+color = (255, 255, 255)
+
+# light shade of the button
+color_light = (170, 170, 170)
+
+# dark shade of the button
+color_dark = (100, 100, 100)
+
+# defining a font
+smallfont = pygame.font.SysFont('Corbel', 35)
 
 
 # Helper Functions
