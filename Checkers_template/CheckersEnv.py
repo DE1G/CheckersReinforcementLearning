@@ -3,7 +3,7 @@
 import numpy as np
 
 
-class checkers_env:
+class CheckersEnv:
 
     def __init__(self, board=None, player=None):
 

@@ -4,13 +4,12 @@ import numpy as np
 import pygame
 import sys
 
-import pygame_menu
-
-from Checkers_template.Gym import train_agent_vs_random
+from Checkers_template.Menu import Menu
+from Checkers_template.training import train_agent_vs_random
 from Checkers_template.WindowState import WindowState
 from Checkers_template.game_controls import check_inputs, check_esc
 from Checkers_template.gui import update_board
-from checkers_env import checkers_env
+from CheckersEnv import CheckersEnv
 from LearningAgent import LearningAgent
 
 #for reproducibility
@@ -27,62 +26,50 @@ pygame.init()
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Checkers")
 
+# Initialize Menu
+MENU = Menu()
+
 # Load Checkers Environment
-env = checkers_env()
+env = CheckersEnv()
 
-Q_agent = LearningAgent(env, "qTable")
+agent_name = "qTable"
 
-window_state = WindowState.MENU
-training_mode = 0
-
-def start_game():
-    global window_state
-    window_state = WindowState.PLAY
-    MENU.disable()
-
-def start_training():
-    global window_state
-    window_state = WindowState.TRAINING
-    MENU.disable()
-def set_training_mode(value, mode):
-    global training_mode
-    training_mode = mode
-
-def play_random():
-    global window_state
-    window_state = WindowState.TEST
-    MENU.disable()
-def start_testplay():
-    global window_state
-    window_state = WindowState.SELF
-    MENU.disable()
-
-def initMenu():
-    menu = pygame_menu.Menu('Welcome', 400, 300,
-                            theme=pygame_menu.themes.THEME_BLUE)
-    menu.add.button('PlayRL', start_game)
-    menu.add.button('Play', start_testplay)
-    menu.add.button('Train RL', start_training)
-    menu.add.button('Test RL', play_random)
-    menu.add.button('Quit', pygame_menu.events.EXIT)
-    return menu
-
-MENU = initMenu()
-
+def set_agent_name(name):
+    global agent_name
+    agent_name = name
 
 def main():
-    global window_state
     run = True
 
     while run:
-        if window_state == WindowState.MENU:
-            MENU.mainloop(WIN)
-        elif window_state == WindowState.TRAINING:
+        if MENU.window_state == WindowState.MENU:
+            MENU.enable()
+            MENU.run(WIN)
+            continue
+        if MENU.window_state == WindowState.SELF:
+            env.reset()
+            selected_piece = None
+            current_player = -1
+
             while run:
-                train_agent_vs_random(env,1000, Q_agent)
-                window_state = WindowState.MENU
-                MENU.enable()
-        elif window_state == WindowState.TEST:
+                update_board(env, WIN, env.get_board(), current_player, selected_piece)
+                current_player, selected_piece = check_inputs(env, env.get_board(), current_player, selected_piece)
+                winner = env.game_winner()
+
+                if winner is not None:
+                    print("Player", winner, "wins!")
+                    MENU.window_state = WindowState.MENU
+                    break
+
+                if check_esc():
+                    MENU.window_state = WindowState.MENU
+                    break
+
+        Q_agent = LearningAgent(env, agent_name)
+        if MENU.window_state == WindowState.TRAINING:
+            train_agent_vs_random(env,1000, Q_agent)
+            MENU.window_state = WindowState.MENU
+        elif MENU.window_state == WindowState.TEST:
             r_wins = 0
             a_wins = 0
             print("start testing")
@@ -119,28 +106,7 @@ def main():
             print("r:", r_wins)
             print("games lost average moves played:", np.mean(lost_games_move_count))
             print("games won average moves played:", np.mean(won_games_move_count))
-            window_state = WindowState.MENU
-            MENU.enable()
-        elif window_state == WindowState.SELF:
-            env.reset()
-            selected_piece = None
-            current_player = -1
-
-            while run:
-                update_board(env, WIN, env.get_board(), current_player, selected_piece)
-                current_player, selected_piece = check_inputs(env, env.get_board(), current_player, selected_piece)
-                winner = env.game_winner()
-
-                if winner is not None:
-                    print("Player", winner, "wins!")
-                    window_state = WindowState.MENU
-                    MENU.enable()
-                    break
-
-                if check_esc():
-                    window_state = WindowState.MENU
-                    MENU.enable()
-                    break
+            MENU.window_state = WindowState.MENU
         else:
             env.reset()
             selected_piece = None
@@ -157,13 +123,11 @@ def main():
 
                 if winner is not None:
                     print("Player", winner, "wins!")
-                    window_state = WindowState.MENU
-                    MENU.enable()
+                    MENU.window_state = WindowState.MENU
                     break
 
                 if check_esc():
-                    window_state = WindowState.MENU
-                    MENU.enable()
+                    MENU.window_state = WindowState.MENU
                     break
 
 

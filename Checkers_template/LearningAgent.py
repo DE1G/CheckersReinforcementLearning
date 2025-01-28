@@ -137,15 +137,15 @@ class LearningAgent:
         )
 
     def save_QTable(self):
-        with open(self.agent_name + ".csv", "w", newline="") as f:
+        with open("./Q_tables/" + self.agent_name + ".csv", "w", newline="") as f:
             w = csv.writer(f)
             w.writerows(self.q_table.items())
         print(self.agent_name + " Q-table saved")
 
     def load_QTable(self):
-        if os.path.exists(self.agent_name + ".csv"):
+        if os.path.exists("./Q_tables/" + self.agent_name + ".csv"):
             print(self.agent_name + " loading Q-table ...")
-            with open(self.agent_name + ".csv", mode='r', newline='') as file:
+            with open("./Q_tables/" + self.agent_name + ".csv", mode='r', newline='') as file:
                 reader = csv.reader(file)
                 for row in reader:
                     state_tuple = eval(row[0])

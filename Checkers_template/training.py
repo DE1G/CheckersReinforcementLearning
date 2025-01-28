@@ -92,8 +92,8 @@ def train_agent_vs_random(env, episodes, agent):
             if back_to_menu:
                 break
 
-        plot_game_history_percentage(rl_agent_total_wins_history)
         agent.save_QTable()
+        plot_game_history_percentage(rl_agent_total_wins_history)
 
         if back_to_menu:
             break

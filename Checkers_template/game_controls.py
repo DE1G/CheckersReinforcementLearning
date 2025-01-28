@@ -1,4 +1,5 @@
 import pygame
+import keyboard
 
 # Constants
 WIDTH, HEIGHT = 600, 600  # Window dimensions
@@ -35,8 +36,6 @@ def get_square_from_pos(pos):
     return y // SQUARE_SIZE, x // SQUARE_SIZE
 
 def check_esc():
-    pressed = pygame.key.get_pressed()
-    if pressed[pygame.K_ESCAPE]:
-        print("esc")
+    if keyboard.is_pressed("esc"):
         return True
     return False

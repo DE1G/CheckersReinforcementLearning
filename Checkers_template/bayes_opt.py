@@ -4,9 +4,9 @@ from skopt import gp_minimize
 from skopt.space import Real
 from skopt.utils import use_named_args
 
-from Checkers_template.Gym import train_agent_vs_random_until_converge_return_final_winrate
+from Checkers_template.training import train_agent_vs_random_until_converge_return_final_winrate
 from Checkers_template.LearningAgent import LearningAgent
-from Checkers_template.checkers_env import checkers_env
+from Checkers_template.CheckersEnv import CheckersEnv
 import time
 
 start_time = time.time()
@@ -28,7 +28,7 @@ search_space = [
 def objective(learning_rate, epsilon, discount_factor, win_reward_weight, capturing_king_reward_weight, king_reward_weight,
                           capturing_pieces_reward_weight, pieces_reward_weight):
     # Initialize the environment and agent
-    env = checkers_env()
+    env = CheckersEnv()
     env.initialize_board()
     agent = LearningAgent(
         env=env,
@@ -47,7 +47,7 @@ def objective(learning_rate, epsilon, discount_factor, win_reward_weight, captur
     )
 
     # Train the agent and evaluate performance
-    winrate = train_agent_vs_random_until_converge_return_final_winrate(env, agent, 1)  # Replace with your evaluation metric
+    winrate = train_agent_vs_random_until_converge_return_final_winrate(env, agent, 0.005)  # Replace with your evaluation metric
 
     print("--- %s seconds ---" % (time.time() - start_time))
     # Negate the reward since Bayesian Optimization minimizes the objective
@@ -58,7 +58,7 @@ def objective(learning_rate, epsilon, discount_factor, win_reward_weight, captur
 result = gp_minimize(
     func=objective,
     dimensions=search_space,
-    n_calls=10,  # Number of evaluations
+    n_calls=100,  # Number of evaluations
     random_state=42,  # For reproducibility
 )
 
