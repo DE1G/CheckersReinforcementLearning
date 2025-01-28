@@ -1,16 +1,13 @@
-
-import csv
+import copy
 import random
 
 import pandas as pd
-import pygame
 from matplotlib import pyplot as plt
 
 from Checkers_template.game_controls import check_esc
 
 
 def get_next_state(env, side):
-
     if env.game_winner() is None:
         random_action = random.choice(env.valid_moves(-side))
         env.move_piece(-side, random_action)
@@ -30,6 +27,7 @@ def plot_game_history_percentage(game_history):
     pd.Series(win_percentage).plot()
     plt.ylim(0.4, 1)
     plt.show()
+    print("current win %:", win_percentage[len(win_percentage) - 1])
 
 
 
@@ -58,7 +56,7 @@ def train_agent_vs_random(env, episodes, agent):
             side = -side
             next_state = None
             state = (tuple(env.get_board().flatten()), side)
-            board = env.get_board()
+            board = copy.copy(env.get_board())
             while True:
                 # Select and perform an action
                 action = agent.select_action(side)
@@ -76,7 +74,7 @@ def train_agent_vs_random(env, episodes, agent):
 
                 # Move to the next state and switch players
                 state = next_state
-                board = env.get_board()
+                board = copy.copy(env.get_board())
 
                 back_to_menu = check_esc()
                 if back_to_menu or winner is not None:
@@ -89,7 +87,7 @@ def train_agent_vs_random(env, episodes, agent):
                 rl_agent_total_wins_history.append(rl_agent_total_wins_history[len(rl_agent_total_wins_history) - 1])
 
             # Decay epsilon after each episode
-            agent.epsilon = max(0.01, agent.epsilon * 0.99)
+            agent.epsilon = max(0.01, agent.epsilon * 0.998)
 
             if back_to_menu:
                 break
@@ -99,3 +97,47 @@ def train_agent_vs_random(env, episodes, agent):
 
         if back_to_menu:
             break
+
+def train_agent_vs_random_until_converge_return_final_winrate(env, agent, convergence_value):
+    wins = 0
+    episodes = 0
+    last_win_percentage = float("-inf")
+    side = 1  # side that agent will play on
+    while True:
+        for episode in range(1000):
+            # reset board switch side and set starting states
+            env.reset()
+            side = -side
+            next_state = None
+            state = (tuple(env.get_board().flatten()), side)
+            board = copy.copy(env.get_board())
+            while True:
+                # Select and perform an action
+                action = agent.select_action(side)
+                env.move_piece(side, action)
+
+                winner = env.game_winner()
+
+                if winner is None:
+                    next_state = get_next_state(env, side)
+                    winner = env.game_winner()
+
+                reward = agent.evaluate_board(board, env.get_board(), side, winner)
+                agent.update_QTable((state, action), next_state, side, reward)
+
+                # Move to the next state and switch players
+                state = next_state
+                board = copy.copy(env.get_board())
+                if winner is not None:
+                    if winner == side:
+                        wins += 1
+                    break
+            # Decay epsilon after each episode
+            agent.epsilon = max(0.01, agent.epsilon * 0.99)
+
+        episodes += 1000
+        if wins/episodes - last_win_percentage < convergence_value or wins/episodes >= 0.95:
+            break
+        last_win_percentage = wins/episodes
+    print(episodes)
+    return wins / episodes

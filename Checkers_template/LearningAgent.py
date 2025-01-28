@@ -6,35 +6,48 @@ import os.path
 
 class LearningAgent:
 
-    def __init__(self, learning_rate, epsilon, discount_factor, env, agent_name):
+    def __init__(self, env, agent_name, learning_rate = None, epsilon = None, discount_factor = None, parameters_line = 1 ):
         """
         Initialize the LearningAgent.
 
         :param learning_rate: Learning rate (alpha)
-        :param epsilon: Exploration rate (initial value)
+        :param epsilon: Exploration rate
         :param discount_factor: Discount factor (gamma)
         :param env: The checkers environment instance
         """
-        self.step_size = learning_rate
+        self.learning_rate = learning_rate
         self.epsilon = epsilon
         self.discount_factor = discount_factor
         self.env = env
         self.q_table = {}  # Dictionary for Q-values
         self.agent_name = agent_name
-        if os.path.exists(agent_name + ".csv"):
-            print(agent_name + " loading Q-table ...")
-            with open(agent_name + ".csv", mode='r', newline='') as file:
-                reader = csv.reader(file)
-                for row in reader:
-                    key_tuple = eval(row[0])
-                    value = float(row[1])
-                    self.q_table[key_tuple] = value
-            print(agent_name + " Q-table loaded")
+
+        reward_weights = []
+
+        with open("hyperparameters.csv", mode='r', newline='') as file:
+            reader = csv.reader(file)
+            next(reader) #skip names line
+            for i in range(parameters_line):
+                row = next(reader)
+            if learning_rate is None:
+                self.learning_rate = float(row[0])
+            if epsilon is None:
+                self.epsilon = float(row[1])
+            if discount_factor is None:
+                self.discount_factor = float(row[2])
+            for i in range(5):
+                reward_weights.append(float(row[3+i]))
+
+
+        self.win_reward_weight = reward_weights[0]
+        self.capturing_king_reward_weight = reward_weights[1]
+        self.king_reward_weight = reward_weights[2]
+        self.capturing_pieces_reward_weight = reward_weights[3]
+        self.pieces_reward_weight = reward_weights[4]
+
 
 
     def evaluate_board(self, board, next_board, side, winner = None):
-
-        reward = 0
 
         # Assign rewards for piece differences
         pieces_player = np.count_nonzero((next_board == side) | (next_board == 2 * side))
@@ -42,9 +55,12 @@ class LearningAgent:
         before_pieces_player = np.count_nonzero((board == side) | (board == 2 * side))
         before_pieces_enemy = np.count_nonzero((board == -side) | (board == -2 * side))
 
-        reward += (pieces_player - pieces_enemy) * 2
-        reward -= (before_pieces_player - pieces_player) * 5
-        reward += (before_pieces_enemy - pieces_enemy) * 5
+        pieces_reward = 0
+        pieces_reward += (pieces_player - pieces_enemy) # having more pieces than enemy
+        #For capturing/ losing pieces
+        capturing_pieces_reward = 0
+        capturing_pieces_reward -= (before_pieces_player - pieces_player)
+        capturing_pieces_reward += (before_pieces_enemy - pieces_enemy)
 
         # Additional rewards for kings
         before_kings_player = np.count_nonzero(board == 2 * side)
@@ -52,29 +68,40 @@ class LearningAgent:
         kings_player = np.count_nonzero(next_board == 2 * side)
         kings_enemy = np.count_nonzero(next_board == -2 * side)
 
-        reward += kings_player
-        reward -= (before_kings_player - kings_player) * 3
-        reward += (before_kings_enemy - kings_enemy) * 3
+        #having king
+        king_reward = 0
+        king_reward += (kings_player - kings_enemy)
+        #making, capturing or losing king
+        capturing_king_reward = 0
+        capturing_king_reward -= (before_kings_player - kings_player)
+        capturing_king_reward += (before_kings_enemy - kings_enemy)
 
+        win_reward = 0
         if winner == side:
-            reward += 5
+            win_reward += 1
         elif winner == -side:
-            reward -= 5
+            win_reward -= 1
         elif winner == 0:
-            reward -= 2
+            win_reward -= 0.2
 
+        reward = (win_reward * self.win_reward_weight +
+                  capturing_king_reward * self.capturing_king_reward_weight +
+                  king_reward * self.king_reward_weight +
+                  capturing_pieces_reward * self.capturing_pieces_reward_weight +
+                  pieces_reward * self.pieces_reward_weight)
         return reward
 
-    def select_action(self, side):
+    def select_action(self, side, use_e_greedy = True):
         """
         Choose an action using an epsilon-greedy policy.
 
+        :param use_e_greedy: determines if agent is greedy
         :param side: The current side the agent plays on
         :return: Selected action
         """
 
         valid_actions = self.env.valid_moves(side)
-        if random.random() < self.epsilon:
+        if random.random() < self.epsilon and use_e_greedy:
             # Exploration: Random action
             return random.choice(valid_actions)
 
@@ -105,7 +132,7 @@ class LearningAgent:
 
         current_q = self.q_table.get(state_action, 0)
         self.q_table[
-        state_action] = current_q + self.step_size * (
+        state_action] = current_q + self.learning_rate * (
             reward + self.discount_factor * next_q - current_q
         )
 
@@ -114,3 +141,24 @@ class LearningAgent:
             w = csv.writer(f)
             w.writerows(self.q_table.items())
         print(self.agent_name + " Q-table saved")
+
+    def load_QTable(self):
+        if os.path.exists(self.agent_name + ".csv"):
+            print(self.agent_name + " loading Q-table ...")
+            with open(self.agent_name + ".csv", mode='r', newline='') as file:
+                reader = csv.reader(file)
+                for row in reader:
+                    state_tuple = eval(row[0])
+                    q_value = float(row[1])
+                    self.q_table[state_tuple] = q_value
+            print(self.agent_name + " Q-table loaded")
+        else:
+            print("There is no exising Q-table for the agent: " + self.agent_name)
+
+    def set_reward_weights(self, win_reward_weight, capturing_king_reward_weight, king_reward_weight,
+                          capturing_pieces_reward_weight, pieces_reward_weight):
+        self.win_reward_weight = win_reward_weight
+        self.capturing_king_reward_weight = capturing_king_reward_weight
+        self.king_reward_weight = king_reward_weight
+        self.capturing_pieces_reward_weight = capturing_pieces_reward_weight
+        self.pieces_reward_weight = pieces_reward_weight

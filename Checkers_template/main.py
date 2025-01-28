@@ -1,5 +1,6 @@
 import random
 
+import numpy as np
 import pygame
 import sys
 
@@ -11,6 +12,9 @@ from Checkers_template.game_controls import check_inputs, check_esc
 from Checkers_template.gui import update_board
 from checkers_env import checkers_env
 from LearningAgent import LearningAgent
+
+#for reproducibility
+random.seed(42)
 
 # Constants
 WIDTH, HEIGHT = 600, 600  # Window dimensions
@@ -26,7 +30,7 @@ pygame.display.set_caption("Checkers")
 # Load Checkers Environment
 env = checkers_env()
 
-Q_agent = LearningAgent(0.4, 0.5, 0.5, env, "qTable")
+Q_agent = LearningAgent(env, "qTable")
 
 window_state = WindowState.MENU
 training_mode = 0
@@ -82,35 +86,39 @@ def main():
             r_wins = 0
             a_wins = 0
             print("start testing")
-            for game in range(100):
+            won_games_move_count = []
+            lost_games_move_count = []
+            agent_side = random.choice([1,-1])
+            for game in range(1000):
                 env.reset()
+                agent_side = -agent_side
                 current_player = -1
                 moves_played = 0
                 while run:
                     update_board(env, WIN, env.get_board(), current_player)
-                    if current_player == -1:
+                    if current_player == -agent_side:
                         actions = env.valid_moves(current_player)
                         action = random.choice(actions)
                         env.move_piece(current_player, action)
-                    elif current_player == 1:
-                        Q_agent.select_action(current_player)
-                        env.move_piece(current_player, Q_agent.select_action(current_player))
+                    elif current_player == agent_side:
+                        env.move_piece(current_player, Q_agent.select_action(current_player, False))
                     current_player = -current_player
                     moves_played += 1
                     winner = env.game_winner()
 
-                    if moves_played >= 400:
-                        print("to many moves")
-                        break
                     if winner is not None:
-                        if winner == -1:
-                            a_wins += 1
-                        elif winner == 1:
+                        if winner == -agent_side:
+                            lost_games_move_count.append(moves_played)
                             r_wins += 1
+                        elif winner == agent_side:
+                            won_games_move_count.append(moves_played)
+                            a_wins += 1
                         print("Player", winner, "wins!")
                         break
             print("agent:", a_wins)
             print("r:", r_wins)
+            print("games lost average moves played:", np.mean(lost_games_move_count))
+            print("games won average moves played:", np.mean(won_games_move_count))
             window_state = WindowState.MENU
             MENU.enable()
         elif window_state == WindowState.SELF:
@@ -143,8 +151,7 @@ def main():
                 if current_player == -1:
                     current_player, selected_piece = check_inputs(env, env.get_board(), current_player, selected_piece)
                 elif current_player == 1:
-                    Q_agent.select_action(current_player)
-                    env.move_piece(current_player, Q_agent.select_action(current_player))
+                    env.move_piece(current_player, Q_agent.select_action(current_player, False))
                     current_player = -current_player
                 winner = env.game_winner()
 
