@@ -1,11 +1,10 @@
 import random
 
-import numpy as np
 import pygame
 import sys
 
 from Checkers_template.Menu import Menu
-from Checkers_template.training import train_agent_vs_random
+from Checkers_template.training import train_agent_vs_random, train_agent_vs_agent
 from Checkers_template.WindowState import WindowState
 from Checkers_template.game_controls import check_inputs, check_esc
 from Checkers_template.gui import update_board
@@ -32,13 +31,11 @@ MENU = Menu()
 # Load Checkers Environment
 env = CheckersEnv()
 
-agent_name = "qTable"
-
-def set_agent_name(name):
-    global agent_name
-    agent_name = name
+#Intialize Learning Agent
+Q_agent = LearningAgent(env, "QTable", parameters_line=2)
 
 def main():
+    global Q_agent
     run = True
 
     while run:
@@ -64,48 +61,52 @@ def main():
                 if check_esc():
                     MENU.window_state = WindowState.MENU
                     break
-
-        Q_agent = LearningAgent(env, agent_name)
+            continue
+        if Q_agent.agent_name != MENU.agent_name:
+            Q_agent = LearningAgent(env, MENU.agent_name, parameters_line=2)
+        if len(Q_agent.q_table.items()) == 0:
+            Q_agent.load_QTable()
         if MENU.window_state == WindowState.TRAINING:
-            train_agent_vs_random(env,1000, Q_agent)
+            if MENU.training_mode == 1:
+                print("Agent vs Random")
+                train_agent_vs_random(env,1000, Q_agent)
+            else:
+                print("Agent vs Agent")
+                train_agent_vs_agent(env,1000, Q_agent)
             MENU.window_state = WindowState.MENU
         elif MENU.window_state == WindowState.TEST:
             r_wins = 0
             a_wins = 0
             print("start testing")
-            won_games_move_count = []
-            lost_games_move_count = []
             agent_side = random.choice([1,-1])
-            for game in range(1000):
+            for game in range(200):
                 env.reset()
                 agent_side = -agent_side
                 current_player = -1
-                moves_played = 0
+                moves_since_capture = 0
                 while run:
                     update_board(env, WIN, env.get_board(), current_player)
                     if current_player == -agent_side:
                         actions = env.valid_moves(current_player)
                         action = random.choice(actions)
-                        env.move_piece(current_player, action)
-                    elif current_player == agent_side:
-                        env.move_piece(current_player, Q_agent.select_action(current_player, False))
-                    current_player = -current_player
-                    moves_played += 1
-                    winner = env.game_winner()
+                    else:
+                        action = Q_agent.select_action(current_player, False)
+                    env.move_piece(current_player, action)
 
+                    moves_since_capture += 1
+                    if len(action[4]) > 1:
+                        moves_since_capture = 0
+                    current_player = -current_player
+
+                    winner = env.game_winner(moves_since_capture)
                     if winner is not None:
                         if winner == -agent_side:
-                            lost_games_move_count.append(moves_played)
                             r_wins += 1
                         elif winner == agent_side:
-                            won_games_move_count.append(moves_played)
                             a_wins += 1
-                        print("Player", winner, "wins!")
                         break
             print("agent:", a_wins)
             print("r:", r_wins)
-            print("games lost average moves played:", np.mean(lost_games_move_count))
-            print("games won average moves played:", np.mean(won_games_move_count))
             MENU.window_state = WindowState.MENU
         else:
             env.reset()

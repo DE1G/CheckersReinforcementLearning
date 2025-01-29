@@ -18,15 +18,13 @@ search_space = [
     Real(0.5, 0.7, name="discount_factor"),  # Range for discount factor
     Real(0.75, 1.0, name="win_reward_weight"),
     Real(0.0, 1.0, name="capturing_king_reward_weight"),
-    Real(0.0, 0.7, name="king_reward_weight"),
-    Real(0.45, 0.75, name="capturing_pieces_reward_weight"),
-    Real(0.5, 0.7, name="pieces_reward_weight")
+    Real(0.0, 0.75, name="capturing_pieces_reward_weight"),
 ]
 
 # Define the objective function
 @use_named_args(search_space)
-def objective(learning_rate, epsilon, discount_factor, win_reward_weight, capturing_king_reward_weight, king_reward_weight,
-                          capturing_pieces_reward_weight, pieces_reward_weight):
+def objective(learning_rate, epsilon, discount_factor, win_reward_weight, capturing_king_reward_weight,
+                          capturing_pieces_reward_weight):
     # Initialize the environment and agent
     env = CheckersEnv()
     env.initialize_board()
@@ -41,13 +39,11 @@ def objective(learning_rate, epsilon, discount_factor, win_reward_weight, captur
     agent.set_reward_weights(
         win_reward_weight=win_reward_weight,
         capturing_king_reward_weight=capturing_king_reward_weight,
-        king_reward_weight=king_reward_weight,
         capturing_pieces_reward_weight=capturing_pieces_reward_weight,
-        pieces_reward_weight=pieces_reward_weight
     )
 
     # Train the agent and evaluate performance
-    winrate = train_agent_vs_random_until_converge_return_final_winrate(env, agent, 0.005)  # Replace with your evaluation metric
+    winrate = train_agent_vs_random_until_converge_return_final_winrate(env, agent, 0.01)  # Replace with your evaluation metric
 
     print("--- %s seconds ---" % (time.time() - start_time))
     # Negate the reward since Bayesian Optimization minimizes the objective
@@ -58,7 +54,7 @@ def objective(learning_rate, epsilon, discount_factor, win_reward_weight, captur
 result = gp_minimize(
     func=objective,
     dimensions=search_space,
-    n_calls=100,  # Number of evaluations
+    n_calls=20,  # Number of evaluations
     random_state=42,  # For reproducibility
 )
 

@@ -114,11 +114,13 @@ class CheckersEnv:
         for r, c in captured_positions:
             self.board[r, c] = 0
 
-    def game_winner(self):
+    def game_winner(self, moves_since_capture=0):
         """
         Determines the winner of the game.
         Returns 1 if Player 1 wins, -1 if Player -1 wins, 0 for a draw, and None if the game is ongoing.
         """
+        if moves_since_capture >= 80:
+            return 0
         pieces_player1 = np.count_nonzero((self.board == 1) | (self.board == 2))
         pieces_player2 = np.count_nonzero((self.board == -1) | (self.board == -2))
 
