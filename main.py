@@ -48,7 +48,7 @@ def main():
             continue
 
         if Q_agent is None or  Q_agent.agent_name != MENU.agent_name:
-            Q_agent = LearningAgent(env, MENU.agent_name, parameters_line=4)
+            Q_agent = LearningAgent(env, MENU.agent_name, parameters_line=2)
 
         if len(Q_agent.q_table.items()) == 0:
             Q_agent.load_QTable()
