@@ -4,9 +4,9 @@ from skopt import gp_minimize
 from skopt.space import Real
 from skopt.utils import use_named_args
 
-from training import train_agent_vs_random_until_converge_return_final_winrate
-from LearningAgent import LearningAgent
-from CheckersEnv import CheckersEnv
+from rl.training import train_agent_vs_random_until_converge_return_final_winrate
+from rl.LearningAgent import LearningAgent
+from game.CheckersEnv import CheckersEnv
 import time
 
 start_time = time.time()
@@ -47,7 +47,7 @@ def objective(learning_rate, epsilon, discount_factor, win_reward_weight, captur
 
     print("--- %s seconds ---" % (time.time() - start_time))
     # Negate the reward since Bayesian Optimization minimizes the objective
-    return -winrate
+    return winrate
 
 
 # Run Bayesian Optimization
